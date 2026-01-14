@@ -1,42 +1,38 @@
-# Portfolio Blog Starter
+# Justin's Blog
 
-This is a porfolio site template complete with a blog. Includes:
+Personal blog built with Next.js.
 
-- MDX and Markdown support
-- Optimized for SEO (sitemap, robots, JSON-LD schema)
-- RSS Feed
-- Dynamic OG images
-- Syntax highlighting
-- Tailwind v4
-- Vercel Speed Insights / Web Analytics
-- Geist font
+Based on [Vercel's Portfolio Blog Starter](https://github.com/vercel/examples/tree/main/solutions/blog).
 
-## Demo
+## Tech Stack
 
-https://portfolio-blog-starter.vercel.app
+- **Framework**: Next.js 16 + React 19
+- **Styling**: Tailwind CSS v4
+- **Content**: MDX
+- **Font**: Geist
+- **Linting**: Biome
 
-## How to Use
-
-You can choose from one of the following two methods to use this repository:
-
-### One-Click Deploy
-
-Deploy the example using [Vercel](https://vercel.com?utm_source=github&utm_medium=readme&utm_campaign=vercel-examples):
-
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/vercel/examples/tree/main/solutions/blog&project-name=blog&repository-name=blog)
-
-### Clone and Deploy
-
-Execute [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app) with [pnpm](https://pnpm.io/installation) to bootstrap the example:
+## Getting Started
 
 ```bash
-pnpm create next-app --example https://github.com/vercel/examples/tree/main/solutions/blog blog
-```
-
-Then, run Next.js in development mode:
-
-```bash
+pnpm install
 pnpm dev
 ```
 
-Deploy it to the cloud with [Vercel](https://vercel.com/templates) ([Documentation](https://nextjs.org/docs/app/building-your-application/deploying)).
+## Adding Posts
+
+Create a `.mdx` file in `app/blog/posts/`:
+
+```mdx
+---
+title: 'Post Title'
+publishedAt: '2024-01-01'
+summary: 'Post summary'
+---
+
+Your content...
+```
+
+## License
+
+MIT
