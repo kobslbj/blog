@@ -48,6 +48,28 @@ function RoundedImage(props) {
 	return <Image alt={props.alt} className="rounded-lg" {...props} />;
 }
 
+function YouTube({ id, start, title = "YouTube video player" }) {
+	const params = new URLSearchParams();
+	if (start) {
+		params.set("start", String(start));
+	}
+	const query = params.toString();
+	const src = `https://www.youtube-nocookie.com/embed/${id}${query ? `?${query}` : ""}`;
+
+	return (
+		<div className="relative my-6 aspect-video w-full overflow-hidden rounded-lg">
+			<iframe
+				className="absolute inset-0 h-full w-full"
+				src={src}
+				title={title}
+				allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+				referrerPolicy="strict-origin-when-cross-origin"
+				allowFullScreen
+			/>
+		</div>
+	);
+}
+
 function Code({ children, ...props }) {
 	const codeHTML = highlight(children);
 	return (
@@ -103,6 +125,7 @@ const components = {
 	a: CustomLink,
 	code: Code,
 	Table,
+	YouTube,
 };
 
 export function CustomMDX(props) {
