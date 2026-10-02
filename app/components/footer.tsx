@@ -28,6 +28,21 @@ function GitHubIcon() {
 	);
 }
 
+function XIcon() {
+	return (
+		<svg
+			xmlns="http://www.w3.org/2000/svg"
+			width="20"
+			height="20"
+			viewBox="0 0 640 640"
+			fill="currentColor"
+			aria-hidden="true"
+		>
+			<path d="M453.2 112L523.8 112L369.6 288.2L551 528L409 528L297.7 382.6L170.5 528L99.8 528L264.7 339.5L90.8 112L236.4 112L336.9 244.9L453.2 112zM428.4 485.8L467.5 485.8L215.1 152L173.1 152L428.4 485.8z" />
+		</svg>
+	);
+}
+
 function ThreadsIcon() {
 	return (
 		<svg
@@ -86,6 +101,17 @@ export default function Footer() {
 							aria-label="GitHub"
 						>
 							<GitHubIcon />
+						</a>
+					</li>
+					<li>
+						<a
+							className="flex items-center transition-all hover:text-neutral-800 dark:hover:text-neutral-100"
+							rel="noopener noreferrer"
+							target="_blank"
+							href="https://x.com/juuuustin__00"
+							aria-label="X"
+						>
+							<XIcon />
 						</a>
 					</li>
 					<li>

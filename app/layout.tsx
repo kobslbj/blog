@@ -3,25 +3,45 @@ import { Analytics } from "@vercel/analytics/react";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import { GeistMono } from "geist/font/mono";
 import { GeistSans } from "geist/font/sans";
+import { siteConfig } from "lib/site";
 import type { Metadata } from "next";
-import Footer from "./components/footer";
-import { Navbar } from "./components/nav";
-import { baseUrl } from "./sitemap";
+import { Noto_Serif_TC, Source_Serif_4 } from "next/font/google";
+
+// Reading font for posts: Source Serif for Latin text, Noto Serif TC for Chinese.
+const sourceSerif = Source_Serif_4({
+	subsets: ["latin"],
+	style: ["normal", "italic"],
+	variable: "--font-source-serif",
+	display: "swap",
+});
+
+// CJK fonts have no subset to preload; the browser only fetches the slices a page actually uses.
+const notoSerifTC = Noto_Serif_TC({
+	weight: ["400", "600", "700"],
+	variable: "--font-noto-serif-tc",
+	display: "swap",
+	preload: false,
+});
 
 export const metadata: Metadata = {
-	metadataBase: new URL(baseUrl),
+	metadataBase: new URL(siteConfig.url),
 	title: {
-		default: "Justin Li",
-		template: "%s | Justin Li",
+		default: siteConfig.name,
+		template: `%s | ${siteConfig.name}`,
 	},
-	description: "Justin Li",
+	description: siteConfig.description,
 	openGraph: {
-		title: "Justin Li",
-		description: "Justin Li",
-		url: baseUrl,
-		siteName: "Justin Li",
+		title: siteConfig.name,
+		description: siteConfig.description,
+		url: siteConfig.url,
+		siteName: siteConfig.name,
 		locale: "en_US",
 		type: "website",
+	},
+	alternates: {
+		types: {
+			"application/rss+xml": `${siteConfig.url}/rss`,
+		},
 	},
 	robots: {
 		index: true,
@@ -36,8 +56,6 @@ export const metadata: Metadata = {
 	},
 };
 
-const cx = (...classes) => classes.filter(Boolean).join(" ");
-
 export default function RootLayout({
 	children,
 }: {
@@ -46,20 +64,12 @@ export default function RootLayout({
 	return (
 		<html
 			lang="en"
-			className={cx(
-				"text-black bg-white dark:text-white dark:bg-black",
-				GeistSans.variable,
-				GeistMono.variable,
-			)}
+			className={`${GeistSans.variable} ${GeistMono.variable} ${sourceSerif.variable} ${notoSerifTC.variable} text-black bg-white dark:text-white dark:bg-black`}
 		>
-			<body className="antialiased max-w-xl mx-4 mt-8 lg:mx-auto">
-				<main className="flex-auto min-w-0 mt-6 flex flex-col px-2 md:px-0">
-					<Navbar />
-					{children}
-					<Footer />
-					<Analytics />
-					<SpeedInsights />
-				</main>
+			<body className="antialiased">
+				{children}
+				<Analytics />
+				<SpeedInsights />
 			</body>
 		</html>
 	);

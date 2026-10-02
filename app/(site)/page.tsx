@@ -6,13 +6,7 @@ export default function Page() {
 			<h1 className="mb-8 text-2xl font-semibold tracking-tighter">
 				Who am I?
 			</h1>
-			<p className="mb-4">{`I'm Justin Li, a builder from Taiwan 🇹🇼.`}</p>
-			<p className="mb-4">
-				{`I'm interested in how AI can automate the operational work that keeps global trade moving.`}
-			</p>
-			<p className="mb-4">
-				{`Right now, I'm building AI operations agents for customs brokers and freight forwarders, turning messy communication and workflows into structured, executable processes.`}
-			</p>
+			<p className="mb-4">{`I'm Justin Li, a product builder from Taiwan 🇹🇼.`}</p>
 			<p className="mb-4">
 				{`This blog is where I share what I'm learning about startups.`}
 			</p>

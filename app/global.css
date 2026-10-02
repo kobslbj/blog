@@ -121,6 +121,115 @@ html {
 	margin-bottom: 1.25em;
 }
 
+/* ---------------------------------- Posts ---------------------------------- */
+/* Long-form reading layout (Medium / Substack style): serif body, roomy rhythm, sans headings. */
+
+@utility font-reading {
+	font-family:
+		var(--font-source-serif), var(--font-noto-serif-tc), "Songti TC", ui-serif,
+		Georgia, serif;
+}
+
+.post {
+	@apply font-reading text-neutral-800 dark:text-neutral-200;
+	font-size: 1.1875rem;
+	line-height: 1.85;
+	letter-spacing: 0.01em;
+	text-autospace: normal;
+}
+
+.post p {
+	@apply text-neutral-800 dark:text-neutral-200;
+	margin: 0 0 1.5em;
+}
+
+.post > :first-child:is(p, h1, h2, h3, h4, ul, ol, pre, blockquote) {
+	margin-top: 0;
+}
+
+.post :is(h1, h2, h3, h4) {
+	@apply font-sans font-bold tracking-tight text-neutral-900 dark:text-neutral-100;
+	line-height: 1.35;
+	/* balance splits CJK headings mid-phrase; pretty only avoids a lonely last line */
+	text-wrap: pretty;
+}
+
+.post h1,
+.post h2 {
+	font-size: 1.5rem;
+	margin: 2.2em 0 0.6em;
+}
+
+.post :is(h3, h4) {
+	font-size: 1.25rem;
+	margin: 1.8em 0 0.5em;
+}
+
+.post strong {
+	@apply font-bold text-neutral-900 dark:text-neutral-50;
+}
+
+.post a {
+	@apply decoration-neutral-400 underline-offset-4 decoration-1 hover:decoration-current dark:decoration-neutral-500;
+}
+
+.post :is(ul, ol) {
+	margin: 0 0 1.5em;
+	padding-left: 1.5em;
+}
+
+.post li {
+	margin: 0.4em 0;
+	padding-left: 0.25em;
+}
+
+.post blockquote {
+	@apply border-l-[3px] border-neutral-900 italic dark:border-neutral-100;
+	margin: 2em 0;
+	padding-left: 1.25em;
+}
+
+.post blockquote p {
+	margin-bottom: 0.75em;
+}
+
+/* Section break drawn as three centered dots, like Medium. */
+.post hr {
+	@apply border-0 text-center text-neutral-500;
+	margin: 2.5em 0;
+	height: auto;
+	overflow: visible;
+}
+
+.post hr::before {
+	content: "···";
+	font-size: 1.75rem;
+	letter-spacing: 0.6em;
+	padding-left: 0.6em;
+	line-height: 1;
+}
+
+.post :is(img, iframe) {
+	margin: 2em 0;
+}
+
+.post pre {
+	font-size: 0.875rem;
+	margin: 0 0 1.5em;
+}
+
+.post :not(pre) > code {
+	@apply bg-neutral-100 dark:bg-neutral-900;
+	font-size: 0.85em;
+}
+
+@media (max-width: 640px) {
+	.post {
+		font-size: 1.0625rem;
+		line-height: 1.8;
+	}
+}
+
 pre::-webkit-scrollbar {
 	display: none;
 }
@@ -147,4 +256,36 @@ table {
 
 .title {
 	text-wrap: balance;
+}
+
+/* ---------------------------------- Editor --------------------------------- */
+
+.editor-field {
+	display: block;
+	width: 100%;
+	resize: none;
+	border: 0;
+	outline: 0;
+	background: transparent;
+	color: inherit;
+	overflow: hidden;
+	field-sizing: content;
+}
+
+.editor-field::placeholder {
+	color: #a3a3a3;
+}
+
+@media (prefers-color-scheme: dark) {
+	.editor-field::placeholder {
+		color: #525252;
+	}
+}
+
+.editor-body {
+	font-size: 1.125rem;
+	line-height: 1.8;
+	font-variant-ligatures: none;
+	tab-size: 2;
+	caret-color: #47a3f3;
 }
