@@ -17,6 +17,7 @@
 		"geist": "1.7.2",
 		"next": "^16.3.5",
 		"next-mdx-remote": "^6.0.0",
+		"posthog-js": "^1.435.6",
 		"react": "^19.2.1",
 		"react-dom": "^19.2.1",
 		"remark-cjk-friendly": "^2.3.1",

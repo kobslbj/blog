@@ -1,5 +1,6 @@
 import { Comments } from "app/components/comments";
 import { CustomMDX } from "app/components/mdx";
+import { PostAnalytics } from "app/components/post-analytics";
 import { ViewCounter } from "app/components/view-counter";
 import { countWords, formatDate, getBlogPost, getBlogPosts } from "lib/content";
 import { siteConfig } from "lib/site";
@@ -60,6 +61,8 @@ export default async function BlogPost({ params }: Props) {
 		notFound();
 	}
 
+	const words = countWords(post.content);
+
 	const jsonLd = {
 		"@context": "https://schema.org",
 		"@type": "BlogPosting",
@@ -112,8 +115,7 @@ export default async function BlogPost({ params }: Props) {
 							</Link>
 							<p className="flex flex-wrap items-center gap-x-2 text-neutral-500 dark:text-neutral-400">
 								<span>
-									{formatDate(post.metadata.publishedAt)} ·{" "}
-									{readingTime(countWords(post.content))}
+									{formatDate(post.metadata.publishedAt)} · {readingTime(words)}
 								</span>
 								{post.metadata.draft ? (
 									<span className="rounded-full border border-amber-400 px-2 text-xs text-amber-600 dark:text-amber-400">
@@ -138,10 +140,17 @@ export default async function BlogPost({ params }: Props) {
 					</figure>
 				)}
 
-				<div className="prose post mt-10">
+				<div id="post-body" className="prose post mt-10">
 					<CustomMDX source={post.content} />
 				</div>
 			</article>
+			<PostAnalytics
+				slug={post.slug}
+				title={post.metadata.title}
+				words={words}
+				language={/\p{Script=Han}/u.test(post.content) ? "zh" : "en"}
+				bodyId="post-body"
+			/>
 
 			<aside className="mt-16 flex items-start gap-4 border-t border-neutral-200 pt-10 dark:border-neutral-800">
 				<Image

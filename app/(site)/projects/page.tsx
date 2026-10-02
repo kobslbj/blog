@@ -1,3 +1,4 @@
+import { TrackedLink } from "app/components/tracked-link";
 import Image from "next/image";
 
 export const metadata = {
@@ -122,22 +123,26 @@ function ProjectSection({ project }: { project: Project }) {
 			</ul>
 
 			<div className="flex flex-wrap gap-3 text-sm">
-				<a
+				<TrackedLink
+					event="app_store_clicked"
+					properties={{ app: project.name }}
 					href={project.appStore}
 					target="_blank"
 					rel="noopener noreferrer"
 					className="rounded-full bg-black px-4 py-2 font-medium text-white transition-opacity hover:opacity-80 dark:bg-white dark:text-black"
 				>
 					Download on the App Store
-				</a>
-				<a
+				</TrackedLink>
+				<TrackedLink
+					event="project_website_clicked"
+					properties={{ app: project.name }}
 					href={project.website}
 					target="_blank"
 					rel="noopener noreferrer"
 					className="rounded-full border border-neutral-200 px-4 py-2 font-medium transition-colors hover:border-neutral-400 dark:border-neutral-800 dark:hover:border-neutral-600"
 				>
 					{new URL(project.website).hostname.replace("www.", "")} ↗
-				</a>
+				</TrackedLink>
 			</div>
 		</article>
 	);
