@@ -7,6 +7,9 @@ const nextConfig: NextConfig = {
 			bodySizeLimit: "11mb",
 		},
 	},
+	async redirects() {
+		return [{ source: "/read", destination: "/resources", permanent: true }];
+	},
 	// PostHog reverse proxy: events go to /ingest on our own domain so tracking blockers don't drop them.
 	async rewrites() {
 		return [

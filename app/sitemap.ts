@@ -8,10 +8,12 @@ export default function sitemap(): MetadataRoute.Sitemap {
 		lastModified: post.metadata.publishedAt,
 	}));
 
-	const routes = ["", "/about", "/blog", "/projects", "/read"].map((route) => ({
-		url: `${siteConfig.url}${route}`,
-		lastModified: new Date().toISOString().split("T")[0],
-	}));
+	const routes = ["", "/about", "/blog", "/projects", "/resources"].map(
+		(route) => ({
+			url: `${siteConfig.url}${route}`,
+			lastModified: new Date().toISOString().split("T")[0],
+		}),
+	);
 
 	return [...routes, ...blogs];
 }
