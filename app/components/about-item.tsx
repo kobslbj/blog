@@ -10,6 +10,11 @@ export type AboutPhoto = {
 	height: number;
 };
 
+export type AboutDeck = {
+	title: string;
+	slides: AboutPhoto[];
+};
+
 export function AboutItem({
 	title,
 	subtitle,
@@ -17,6 +22,7 @@ export function AboutItem({
 	dateItalic,
 	photos = [],
 	scan,
+	deck,
 	children,
 }: {
 	title: string;
@@ -26,10 +32,15 @@ export function AboutItem({
 	photos?: AboutPhoto[];
 	// Runs the Deeptector scan sweep over the photos when they open.
 	scan?: boolean;
+	// A talk or deck, opened slide by slide in the full-screen viewer.
+	deck?: AboutDeck;
 	children?: ReactNode;
 }) {
 	const [open, setOpen] = useState(false);
-	const [viewing, setViewing] = useState<number | null>(null);
+	const [viewing, setViewing] = useState<{
+		items: AboutPhoto[];
+		index: number;
+	} | null>(null);
 	const hasPhotos = photos.length > 0;
 
 	const details = (
@@ -71,60 +82,91 @@ export function AboutItem({
 		</>
 	);
 
-	if (!hasPhotos) {
-		return (
-			<li>
-				<div className="flex flex-col">{details}</div>
-			</li>
-		);
-	}
-
 	return (
 		<li>
-			<button
-				type="button"
-				onClick={() => setOpen(!open)}
-				aria-expanded={open}
-				className="flex w-full cursor-pointer flex-col text-left"
-			>
-				{details}
-			</button>
+			{hasPhotos ? (
+				<button
+					type="button"
+					onClick={() => setOpen(!open)}
+					aria-expanded={open}
+					className="flex w-full cursor-pointer flex-col text-left"
+				>
+					{details}
+				</button>
+			) : (
+				<div className="flex flex-col">{details}</div>
+			)}
 
-			<div
-				className={`grid transition-[grid-template-rows,opacity] duration-500 ease-out motion-reduce:transition-none ${
-					open ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"
-				}`}
-			>
-				<div className="overflow-hidden">
-					<div className="-mx-1 flex snap-x snap-mandatory gap-3 overflow-x-auto px-1 pt-4 pb-2">
-						{photos.map((photo, i) => (
-							<button
-								key={photo.src}
-								type="button"
-								onClick={() => setViewing(i)}
-								aria-label={`View photo: ${photo.alt}`}
-								className="relative shrink-0 cursor-zoom-in snap-start overflow-hidden rounded-xl ring-1 ring-neutral-200 dark:ring-neutral-800"
+			{deck && (
+				<button
+					type="button"
+					onClick={() => setViewing({ items: deck.slides, index: 0 })}
+					className="group mt-3 flex w-full max-w-sm cursor-pointer items-center gap-3 rounded-xl border border-neutral-200 p-2 text-left transition-colors hover:border-neutral-400 dark:border-neutral-800 dark:hover:border-neutral-600"
+				>
+					<span className="relative w-24 shrink-0 overflow-hidden rounded-md ring-1 ring-neutral-200 dark:ring-neutral-800">
+						<Image
+							src={deck.slides[0].src}
+							alt=""
+							width={deck.slides[0].width}
+							height={deck.slides[0].height}
+							sizes="96px"
+							className="m-0 block h-auto w-full"
+						/>
+					</span>
+					<span className="flex min-w-0 flex-col">
+						<span className="text-sm font-medium text-neutral-900 dark:text-neutral-100">
+							{deck.title}
+						</span>
+						<span className="text-xs text-neutral-500">
+							{deck.slides.length} slides · View{" "}
+							<span
+								aria-hidden
+								className="inline-block transition-transform duration-300 group-hover:translate-x-0.5"
 							>
-								<Image
-									src={photo.src}
-									alt={photo.alt}
-									width={photo.width}
-									height={photo.height}
-									sizes="(max-width: 640px) 90vw, 576px"
-									className="m-0 block h-64 w-auto max-w-[85vw] object-cover sm:h-72 sm:max-w-none"
-								/>
-								{scan && open && <ScanOverlay delay={i * 0.25} />}
-							</button>
-						))}
+								→
+							</span>
+						</span>
+					</span>
+				</button>
+			)}
+
+			{hasPhotos && (
+				<div
+					className={`grid transition-[grid-template-rows,opacity] duration-500 ease-out motion-reduce:transition-none ${
+						open ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"
+					}`}
+				>
+					<div className="overflow-hidden">
+						<div className="-mx-1 flex snap-x snap-mandatory gap-3 overflow-x-auto px-1 pt-4 pb-2">
+							{photos.map((photo, i) => (
+								<button
+									key={photo.src}
+									type="button"
+									onClick={() => setViewing({ items: photos, index: i })}
+									aria-label={`View photo: ${photo.alt}`}
+									className="relative shrink-0 cursor-zoom-in snap-start overflow-hidden rounded-xl ring-1 ring-neutral-200 dark:ring-neutral-800"
+								>
+									<Image
+										src={photo.src}
+										alt={photo.alt}
+										width={photo.width}
+										height={photo.height}
+										sizes="(max-width: 640px) 90vw, 576px"
+										className="m-0 block h-64 w-auto max-w-[85vw] object-cover sm:h-72 sm:max-w-none"
+									/>
+									{scan && open && <ScanOverlay delay={i * 0.25} />}
+								</button>
+							))}
+						</div>
 					</div>
 				</div>
-			</div>
+			)}
 
-			{viewing !== null && (
+			{viewing && (
 				<Lightbox
-					photos={photos}
-					index={viewing}
-					onChange={setViewing}
+					photos={viewing.items}
+					index={viewing.index}
+					onChange={(index) => setViewing({ ...viewing, index })}
 					onClose={() => setViewing(null)}
 				/>
 			)}

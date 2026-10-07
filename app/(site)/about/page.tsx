@@ -1,4 +1,8 @@
-import { AboutItem, type AboutPhoto } from "app/components/about-item";
+import {
+	type AboutDeck,
+	AboutItem,
+	type AboutPhoto,
+} from "app/components/about-item";
 
 export const metadata = {
 	title: "About",
@@ -6,6 +10,16 @@ export const metadata = {
 };
 
 const portrait = { width: 1350, height: 1800 };
+
+const jgpSharing: AboutDeck = {
+	title: "My JGP #3 sharing",
+	slides: Array.from({ length: 19 }, (_, i) => ({
+		src: `/images/about/jgp-sharing/${String(i + 1).padStart(2, "0")}.jpg`,
+		alt: `JGP #3 sharing, slide ${i + 1}`,
+		width: 1920,
+		height: 1080,
+	})),
+};
 
 const photos: Record<string, AboutPhoto[]> = {
 	hackathon: [
@@ -123,6 +137,7 @@ export default function Page() {
 						title="Jamie's Gap Year Program #3"
 						date="Aug 2025 – Aug 2026"
 						photos={photos.jgp}
+						deck={jgpSharing}
 					/>
 					<AboutItem
 						title="Military Service, ROC Army 254T"
