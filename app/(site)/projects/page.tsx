@@ -3,7 +3,7 @@ import Image from "next/image";
 
 export const metadata = {
 	title: "Projects",
-	description: "iOS apps I've built and shipped.",
+	description: "iOS apps I'm building and have shipped.",
 };
 
 type Project = {
@@ -11,13 +11,25 @@ type Project = {
 	tagline: string;
 	icon: string;
 	website: string;
-	appStore: string;
+	appStore?: string;
 	description: string[];
 	facts: string[];
 	screens: { src: string; alt: string }[];
 };
 
 const projects: Project[] = [
+	{
+		name: "Varo",
+		tagline: "A bouldering log and community app, made in Taiwan.",
+		icon: "/images/projects/varo-icon.png",
+		website: "https://getvaro.app/",
+		description: [
+			"Varo helps you log every bouldering attempt and see your progress, from your first try on a problem to the day you finally send it.",
+			"Keep track of your sessions, attempts, sends, and flashes, and share the moments worth remembering with your climbing crew.",
+		],
+		facts: ["Bouldering logs", "Progress tracking", "Climbing community"],
+		screens: [],
+	},
 	{
 		name: "67",
 		tagline: "An app blocker for doomscrolling.",
@@ -99,11 +111,13 @@ function ProjectSection({ project }: { project: Project }) {
 				</div>
 			</div>
 
-			<div className="-mx-2 mb-6 flex snap-x snap-mandatory gap-4 overflow-x-auto px-2 pb-3">
-				{project.screens.map((screen) => (
-					<Phone key={screen.src} {...screen} />
-				))}
-			</div>
+			{project.screens.length > 0 && (
+				<div className="-mx-2 mb-6 flex snap-x snap-mandatory gap-4 overflow-x-auto px-2 pb-3">
+					{project.screens.map((screen) => (
+						<Phone key={screen.src} {...screen} />
+					))}
+				</div>
+			)}
 
 			{project.description.map((paragraph) => (
 				<p key={paragraph} className="mb-4">
@@ -123,16 +137,22 @@ function ProjectSection({ project }: { project: Project }) {
 			</ul>
 
 			<div className="flex flex-wrap gap-3 text-sm">
-				<TrackedLink
-					event="app_store_clicked"
-					properties={{ app: project.name }}
-					href={project.appStore}
-					target="_blank"
-					rel="noopener noreferrer"
-					className="rounded-full bg-black px-4 py-2 font-medium text-white transition-opacity hover:opacity-80 dark:bg-white dark:text-black"
-				>
-					Download on the App Store
-				</TrackedLink>
+				{project.appStore ? (
+					<TrackedLink
+						event="app_store_clicked"
+						properties={{ app: project.name }}
+						href={project.appStore}
+						target="_blank"
+						rel="noopener noreferrer"
+						className="rounded-full bg-black px-4 py-2 font-medium text-white transition-opacity hover:opacity-80 dark:bg-white dark:text-black"
+					>
+						Download on the App Store
+					</TrackedLink>
+				) : (
+					<span className="rounded-full bg-neutral-100 px-4 py-2 font-medium text-neutral-600 dark:bg-neutral-900 dark:text-neutral-400">
+						Coming soon to the App Store
+					</span>
+				)}
 				<TrackedLink
 					event="project_website_clicked"
 					properties={{ app: project.name }}
@@ -155,7 +175,7 @@ export default function Page() {
 				Things I've built
 			</h1>
 			<p className="mb-12 text-neutral-600 dark:text-neutral-400">
-				iOS apps I designed, built, and shipped.
+				iOS apps I'm building and have shipped.
 			</p>
 			{projects.map((project) => (
 				<ProjectSection key={project.name} project={project} />
