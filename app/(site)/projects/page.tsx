@@ -14,6 +14,7 @@ type Project = {
 	appStore?: string;
 	description: string[];
 	facts: string[];
+	screenStyle?: "app-store";
 	screens: { src: string; alt: string }[];
 };
 
@@ -28,7 +29,33 @@ const projects: Project[] = [
 			"Keep track of your sessions, attempts, sends, and flashes, and share the moments worth remembering with your climbing crew.",
 		],
 		facts: ["Bouldering logs", "Progress tracking", "Climbing community"],
-		screens: [],
+		screenStyle: "app-store",
+		screens: [
+			{
+				src: "/images/projects/varo/01-session.png",
+				alt: "Varo climbing session with photos, sends, flashes, and grades",
+			},
+			{
+				src: "/images/projects/varo/02-log.png",
+				alt: "Log a route in Varo by grade, hold color, wall type, and result",
+			},
+			{
+				src: "/images/projects/varo/03-progress.png",
+				alt: "Varo progress charts showing climbing sessions and grades",
+			},
+			{
+				src: "/images/projects/varo/04-project.png",
+				alt: "Track a bouldering project in Varo with attempts and a timeline",
+			},
+			{
+				src: "/images/projects/varo/05-share.png",
+				alt: "Share a climb with a Varo sticker showing the grade and send",
+			},
+			{
+				src: "/images/projects/varo/06-history.png",
+				alt: "Varo climbing diary with past sessions and route results",
+			},
+		],
 	},
 	{
 		name: "67",
@@ -113,9 +140,20 @@ function ProjectSection({ project }: { project: Project }) {
 
 			{project.screens.length > 0 && (
 				<div className="-mx-2 mb-6 flex snap-x snap-mandatory gap-4 overflow-x-auto px-2 pb-3">
-					{project.screens.map((screen) => (
-						<Phone key={screen.src} {...screen} />
-					))}
+					{project.screens.map((screen) =>
+						project.screenStyle === "app-store" ? (
+							<Image
+								key={screen.src}
+								{...screen}
+								width={1320}
+								height={2868}
+								sizes="(min-width: 640px) 240px, 208px"
+								className="block h-auto w-52 shrink-0 snap-start self-start rounded-xl sm:w-60"
+							/>
+						) : (
+							<Phone key={screen.src} {...screen} />
+						),
+					)}
 				</div>
 			)}
 
