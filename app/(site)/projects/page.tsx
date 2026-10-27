@@ -24,6 +24,7 @@ const projects: Project[] = [
 		tagline: "A bouldering log and community app, made in Taiwan.",
 		icon: "/images/projects/varo-icon.png",
 		website: "https://getvaro.app/",
+		appStore: "https://apps.apple.com/app/id6821378123",
 		description: [
 			"Varo helps you log every bouldering attempt and see your progress, from your first try on a problem to the day you finally send it.",
 			"Keep track of your sessions, attempts, sends, and flashes, and share the moments worth remembering with your climbing crew.",
