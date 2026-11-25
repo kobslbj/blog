@@ -133,6 +133,15 @@ export default function Page() {
 				</h2>
 
 				<ul className="space-y-4">
+					<AboutItem title="Founder of Meriq AI" date="Jul 2026 – Oct 2026">
+						<a
+							href="https://meriqai.com"
+							target="_blank"
+							rel="noopener noreferrer"
+						>
+							meriqai.com
+						</a>
+					</AboutItem>
 					<AboutItem
 						title="Jamie's Gap Year Program #3"
 						date="Aug 2025 – Aug 2026"
