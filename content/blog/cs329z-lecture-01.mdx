@@ -1,0 +1,184 @@
+---
+title: "CS 329Z: Engineering AI Agents - lecture1"
+publishedAt: "2026-11-26"
+image: "/images/blog/cs329z-l01-cover.png"
+summary: "Intro to Agentic Systems"
+---
+
+課堂錄影：[CS 329Z Lecture 1: Introduction to Agentic Systems](https://www.youtube.com/watch?v=DGI4vucR71w)
+
+在這邊決定來記錄我的 AI Agent 學習紀錄，這邊用的素材是 Stanford CS 329Z 的內容。
+
+我一直把 AI agent 理解成 **model + harness**。直到開始看這門課，我才發現這個公式少說了一件重要的事：**誰決定下一步？**
+
+固定先搜尋、再回答的 RAG chatbot，有模型，也有檢索器和 prompt 模板。但它和會讀錯誤訊息、修改程式、重新跑測試的 coding agent，運作方式並不相同。
+
+這篇記錄我上完第一堂課後，對 agent 的理解有哪些改變。我會拿自己做過的兩個產品來對照：還在做的抱石紀錄 app VARO，以及之前做過的貨代報價工具 Meriq AI。
+
+> 這是我的個人筆記，不是課程的官方內容。哪些是課堂上講的、哪些是我自己的想法，我會盡量分開寫。這篇只挑了我覺得最重要的幾個主題，Reflexion、multi-agent debate 等內容可以看投影片 slide 39–43。
+
+**目錄**
+
+1. [Agent 是什麼？](#agent-是什麼)
+2. [CoT vs ReAct：想得更仔細 vs 邊做邊查證](#cot-vs-react-想得更仔細-vs-邊做邊查證)
+3. [Memory：context window 為什麼有上限？](#memory-context-window-為什麼有上限)
+4. [Tool use：寫好 description 比想像中重要](#tool-use-寫好-description-比想像中重要)
+5. [Workflow vs Agent：拿 Meriq 來想](#workflow-vs-agent-拿-meriq-來想)
+6. [怎麼知道 agent 真的好？](#怎麼知道-agent-真的好)
+7. [Takeaway](#takeaway)
+8. [參考資料](#參考資料)
+
+## Agent 是什麼？
+
+Agent 不是 LLM 時代才有的概念：1995 年 Russell 和 Norvig 的教科書就把 agent 定義成「透過感測器感知、透過致動器行動」的東西，AlphaGo 這類強化學習系統也是 agent。LLM 帶來的改變是，同一個 agent 不必為每個任務重新訓練，就能處理很多不同的任務。
+
+先講 **harness**：它是包在模型外面、支撐 agent 迴圈的程式，負責執行工具、管理 context、處理回饋，以及決定什麼時候停。
+
+我原本的理解是 **agent = model + harness**，但光看系統由哪些東西組成，判斷不出它怎麼運作。舉個例子：一個 RAG chatbot，固定先 retrieve、再塞進 prompt、再回答一次。有模型、檢索器和 prompt 模板，仍不足以判斷它是不是 agent。還要看模型是否能根據執行結果，動態決定接下來的行動。這種照固定順序跑的系統叫做 **workflow**：它和 agent 都屬於 **compound AI system**，差別在於**誰決定步驟**。
+
+![Workflows vs. Agents: Who Decides the Steps?](/images/blog/cs329z-l01-slide56-workflow-vs-agent.png)
+
+*圖片來源：CS 329Z Lecture 1 slide 56*
+
+所以我現在判斷一個系統是不是 agent，會問兩個問題：
+
+1. **行動的結果會不會回到模型手上？**
+2. **模型能不能根據結果，決定接下來要採取什麼行動、要不要繼續、什麼時候結束？**
+
+只有第 1 點還不夠。例如固定執行「產生 → 評分 → 修改」的流程，也會把結果傳回模型，但步驟順序是程式寫死的，Anthropic 就把這種 evaluator–optimizer 歸類為 workflow。
+
+> 這是我採用的工作定義，以「流程控制權」為核心。教授在課堂上說這門課不辯論 agent 的定義，不同研究和產品的用法也有差異。
+
+這裡有一個例子：Cursor 的 Tab 補全算 agent 嗎？我原本覺得算，因為它會「觀察」我的程式碼。但 Tab 只負責提出下一段建議，接不接受、接下來做什麼，**主要由我推進**。反過來，Cursor 的 Agent 模式會自己決定跑哪個指令、讀錯誤訊息、再決定怎麼改、什麼時候算完成。
+
+**有觀察，不等於 agent。關鍵是誰控制下一步。**
+
+## CoT vs ReAct：想得更仔細 vs 邊做邊查證
+
+- **CoT（Chain-of-Thought）**：先寫推理再回答。它會用 context 裡的資訊和模型訓練時學到的知識，但不會去取得新的外部證據。前提錯了，它也會寫出一段很有說服力的推理。
+- **ReAct（Reason + Act）**：想 → 做（呼叫工具）→ 看結果 → 再想。
+- **Self-consistency**：CoT 跑很多次，再對最終答案投票。
+
+以下用 VARO（我自己做的抱石紀錄 app）的**假設情境**來說明，並非實際事故紀錄：使用者回報 iOS 上某個頁面偶爾白屏。
+
+如果只把錯誤描述貼給 ChatGPT，它只能猜「白屏通常是什麼原因」。用 ReAct 的方式，流程會是：
+
+1. **觀察**：查 log，發現錯誤集中在讀取 `profile.avatar` 的位置
+2. **提出假設**：讀程式碼，懷疑是非同步資料還沒回來就開始 render
+3. **重現**：模擬慢網路，確認問題真的會發生
+4. **驗證**：加入對應處理，再跑一次原本會失敗的情境
+
+每一步要做什麼，都取決於上一步看到的結果。「`profile.avatar`」不在使用者的回報裡，是從觀察中得到的。
+
+那多問幾次再投票呢？它可能幫我整理出幾個候選原因，但**不能取代查 log**。五個回答都同意「可能是非同步資料問題」，也不代表這次白屏就是這個原因。
+
+**答案的一致性，不等於外部證據。**
+
+## Memory：context window 為什麼有上限？
+
+context window 到底是怎麼來的？
+
+在一般不更新權重的推論中，模型主要透過當次的 context 取得這次任務的資訊。以 Claude 的 Messages API 為例，基本用法每次都要把對話歷史一起送出。所以可以把 **context 類比成模型的工作記憶**。
+
+context window 的上限，受到模型架構、訓練設定，以及推論時的運算和記憶體成本共同限制。以標準的 full attention 來說，處理整段序列的計算量大約隨長度的平方成長；生成時用來加速的 KV cache，也會隨長度增加而佔用更多記憶體。而且**資訊放得下，不代表模型能同樣有效地用上所有內容**。
+
+平方成本的來源，可以看 Transformer 的原始論文〈Attention Is All You Need〉；長 context 中間的資訊比較容易被忽略，則可以看〈Lost in the Middle〉。這兩篇我留到 Lecture 2 的筆記再細讀。
+
+所以我把 context 想成 RAM，外部 memory 想成硬碟。課程把 memory 分成三種，以下用 Claude Code 做一個方便理解的類比：
+
+| 類型 | 存什麼 | Claude Code 裡的類比 |
+| --- | --- | --- |
+| Episodic | 原始事件紀錄 | 對話紀錄 |
+| Semantic | 歸納出的知識 | `CLAUDE.md` 裡的專案知識 |
+| Procedural | 可重複使用的技能 | skills、`CLAUDE.md` 裡的操作步驟 |
+
+分類看的是**內容**，不是檔案：同一份 `CLAUDE.md`，寫專案事實的部分偏 semantic，寫操作步驟的部分偏 procedural。
+
+教授在課堂上提到一個讓我印象很深的案例（錄影 52:18）：有人交代 agent「刪除 email 前先跟我確認」，結果 agent 開始大量刪信，喊停也停不下來。教授的解釋是，context 壓縮時，模型判斷「先確認」這句不重要，把它丟掉了。
+
+摘要可能不完整，甚至漏掉原本重要的操作限制。這讓我意識到：**「刪除前必須確認」不能只靠模型記得。執行刪除的工具本身，也應該檢查這次操作是否已經取得確認。**
+
+## Tool use：寫好 description 比想像中重要
+
+![Tool Use: Anatomy of a Call](/images/blog/cs329z-l01-slide58-tool-call.png)
+
+*圖片來源：CS 329Z Lecture 1 slide 58*
+
+一次 tool call 會經過四步：選工具 → 填參數 → 檢查參數 → 執行。模型負責產生工具呼叫，由執行環境檢查參數並執行。對應到 Vercel AI SDK，大致就是 `description`、`inputSchema`、`execute`。
+
+那 tool call 在 agent 的哪一部分？它是迴圈裡的「行動」，但橫跨三個元件：模型輸出一段呼叫請求（例如 `read_file(path="test.py")`），模型本身其實不會執行任何東西；harness 負責檢查參數、真的去執行；執行結果再放回 context，變成模型下一輪看到的觀察。課程把 tool call 和「跟使用者互動」「回覆使用者」一起歸為 agent actions。
+
+也因為真正執行的是 harness，刪信那個「先確認」的檢查，應該放在執行層，而不是只靠模型記得。`inputSchema` 只能檢查參數的格式對不對，像「這個使用者有沒有權限」「刪除前有沒有確認過」這類業務條件，要由執行層另外檢查。
+
+description 不是影響工具選擇的唯一因素，但寫得太模糊時，模型很容易選錯工具，或者乾脆不呼叫，直接憑記憶回答。好的 description 要寫清楚四件事：做什麼、什麼時候用、什麼時候**不要**用、會回傳什麼。
+
+## Workflow vs Agent：拿 Meriq 來想
+
+回到上面那張圖：workflow 和 agent 的差別在於**誰控制下一步**。我拿之前做 Meriq AI 時的詢價流程來拆，看各個步驟由誰負責判斷：
+
+| 步驟 | 誰負責判斷 | 為什麼 |
+| --- | --- | --- |
+| 解析客戶的詢價訊息 | 模型 | 每個客戶的寫法都不一樣 |
+| 查報價庫 | 程式 | 條件很明確 |
+| 推薦哪一家 | 模型參考歷史紀錄 | 不一定選最便宜，理由太多樣 |
+
+推薦不一定選最便宜，背後的理由寫成規則會越寫越多，所以交給模型參考歷史紀錄。但交給模型也有代價：同一筆詢價問兩次，推薦可能不一樣；forwarder 問「為什麼推薦這家」時，要答得出來；它也可能推薦一家低於毛利下限的。比較穩的做法是：程式先過濾掉硬性條件，模型再排序並附上依據的歷史紀錄，最後由 forwarder 確認。
+
+不過要注意，**這張表拆的是「誰負責判斷」，還不是「誰控制流程」**。即使解析和推薦都交給模型，只要永遠照「解析 → 查庫 → 過濾 → 排序 → 人工確認」的順序執行，整體仍然是 **workflow**。
+
+如果模型發現詢價缺少資訊時，能自己決定先詢問客戶；查不到合適的報價時，能決定改查其他來源，再根據結果繼續處理，那才更接近這裡討論的 **agent**。
+
+所以設計時其實有兩個維度要分開想：**每一步的判斷交給誰**，以及**步驟的順序由誰控制**。
+
+## 怎麼知道 agent 真的好？
+
+課程最後講挑戰，有一句我很有感：**能力最強的 agent，不一定是最可靠的。** 
+
+延伸閱讀〈AI Agents That Matter〉提醒我：評估 agent 的時候，也要同步評估成本。有時候 agent 的表現只比笨方法好一點點，成本卻高出非常多，從商業層面來看就不 make sense。
+
+回頭看 Meriq 的推薦功能，我才發現當時其實沒有建立評估流程。如果「永遠推薦最常選的那家」這種簡單規則有 70% 的吻合率，模型是 72%，只多了 2 個百分點。值不值得，要看樣本量、改善的是哪些案件，以及它帶來的成本和毛利影響。
+
+不過，和歷史選擇一致，也不代表推薦更好。forwarder 以前可能是因為習慣、當時資訊不足或特定合作關係而選某家。所以我得先想清楚：**評估目標到底是模仿過去的選擇，還是提高現在的決策品質？**
+
+如果是後者，我會先看這幾個指標：
+
+| 指標 | 想確認的事 |
+| --- | --- |
+| 硬性條件違反率 | 是否推薦了不符合條件的方案 |
+| 業務可接受率 | 推薦有沒有實際參考價值 |
+| 每筆處理時間 | 是否真的減少人工工作 |
+| 成本與毛利影響 | 改善是否值得投入 |
+
+## Takeaway
+
+1. **整門課的骨架是 System、Data、Evals 三層。** agent 表現不好時，先問問題出在哪一層：流程設計有問題、沒給它需要的資訊，還是根本沒定義什麼叫「做好」？
+2. **判斷是不是 agent，看誰控制下一步。** 有模型、有工具、有回饋都還不夠，要看模型能不能根據結果，決定接下來做什麼、什麼時候停。
+3. **CoT 是想得更仔細，ReAct 是邊做邊查證。** 缺資訊的時候，多想幾次或多問幾次都取代不了去環境裡拿證據，像查 log。
+4. **Context 像 RAM，memory 像硬碟。** context 有上限，放得下也不一定用得好，所以要決定哪些東西存起來、什麼時候再拿出來。
+5. **重要的規則不能只靠模型記得。** 摘要會漏東西，像「刪除前先確認」這種限制，要放在執行工具的那一層檢查。
+6. **「這步讓模型判斷」和「流程讓模型決定」是兩回事。** Meriq 的推薦交給模型，但流程固定，它其實還是 workflow。
+7. **評估 agent 要跟笨方法比，也要算成本。** 只比笨方法好一點、卻貴很多，在商業上就不划算。
+
+下一堂是 LLMs for builders，會從 attention 和 context window 繼續講下去。
+
+## 參考資料
+
+### 課程材料
+
+- **Lecture 1 投影片**：Introduction to Agentic Systems，Stanford CS 329Z · [lecture01.pdf](https://web.stanford.edu/class/cs329z/slides/lecture01.pdf)
+- **Lecture 1 課堂錄影** · [YouTube](https://www.youtube.com/watch?v=DGI4vucR71w)（刪信案例為 52:18）
+- **課程網站**：Stanford CS 329Z: Engineering AI Agents · [cs329z.stanford.edu](https://cs329z.stanford.edu/)
+
+### 延伸閱讀
+
+- **LLM Powered Autonomous Agents**：Lilian Weng，2023 · [lilianweng.github.io](https://lilianweng.github.io/posts/2023-06-23-agent/)
+- **The Shift from Models to Compound AI Systems**：Zaharia et al.，BAIR Blog，2024 · [bair.berkeley.edu](https://bair.berkeley.edu/blog/2024/02/18/compound-ai-systems/)
+- **Building effective agents**：Anthropic，2024 · [anthropic.com](https://www.anthropic.com/engineering/building-effective-agents)
+- **AI Agents That Matter**：Kapoor et al.，2024 · [arXiv:2407.01502](https://arxiv.org/abs/2407.01502)
+- **Self-Consistency Improves Chain of Thought Reasoning in Language Models**：Wang et al.，2022 · [arXiv:2203.11171](https://arxiv.org/abs/2203.11171)
+- **Attention Is All You Need**：Vaswani et al.，2017 · [arXiv:1706.03762](https://arxiv.org/abs/1706.03762)
+- **Lost in the Middle: How Language Models Use Long Contexts**：Liu et al.，2023 · [arXiv:2307.03172](https://arxiv.org/abs/2307.03172)
+
+### 經典文獻
+
+- **Artificial Intelligence: A Modern Approach**：Russell & Norvig，1995
