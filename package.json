@@ -21,6 +21,7 @@
 		"react": "^19.2.1",
 		"react-dom": "^19.2.1",
 		"remark-cjk-friendly": "^2.3.1",
+		"remark-gfm": "^4",
 		"sugar-high": "^0.6.0"
 	},
 	"devDependencies": {

@@ -6,6 +6,7 @@ type MDXComponents = NonNullable<MDXRemoteProps["components"]>;
 
 import React, { type ComponentPropsWithoutRef, type ReactNode } from "react";
 import remarkCjkFriendly from "remark-cjk-friendly";
+import remarkGfm from "remark-gfm";
 import { highlight } from "sugar-high";
 
 type TableData = {
@@ -153,7 +154,8 @@ export const mdxComponents: MDXComponents = {
 
 // `**強調**` next to CJK punctuation (「」！，。) is not valid CommonMark emphasis without this plugin.
 export const mdxOptions = {
-	remarkPlugins: [remarkCjkFriendly],
+	// remark-gfm adds GitHub-style Markdown: pipe tables, strikethrough, task lists, autolinks.
+	remarkPlugins: [remarkGfm, remarkCjkFriendly],
 };
 
 export function CustomMDX(props: MDXRemoteProps) {
