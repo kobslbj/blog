@@ -133,6 +133,7 @@ export default function Page() {
 				</h2>
 
 				<ul className="space-y-4">
+					<AboutItem title="YC Startup School Taipei" date="Nov 12, 2026" />
 					<AboutItem title="Founder of Meriq AI" date="Jul 2026 – Oct 2026">
 						<a
 							href="https://meriqai.com"

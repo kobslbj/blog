@@ -6,7 +6,7 @@ export const siteConfig = {
 	url: process.env.NEXT_PUBLIC_SITE_URL ?? "https://justinli.blog",
 	email: "kobs666666@gmail.com",
 	avatar: "/images/justin.jpg",
-	bio: "Product builder from Taiwan 🇹🇼. Writing about startups and what I'm learning along the way.",
+	bio: "AI product builder and full-stack engineer from Taiwan 🇹🇼. Writing about startups and what I'm learning along the way.",
 	x: "https://x.com/juuuustin__00",
 	// giscus stores comments as GitHub Discussions on the blog repo.
 	// These IDs are public (they appear in the giscus <script> tag); regenerate at https://giscus.app if the repo moves.
