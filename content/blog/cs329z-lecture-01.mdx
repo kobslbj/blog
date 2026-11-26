@@ -34,6 +34,12 @@ Agent 不是 LLM 時代才有的概念：1995 年 Russell 和 Norvig 的教科�
 
 先講 **harness**：它是包在模型外面、支撐 agent 迴圈的程式，負責執行工具、管理 context、處理回饋，以及決定什麼時候停。
 
+![Agents: Key Components](/images/blog/cs329z-l01-slide30-components.png)
+
+*圖片來源：CS 329Z Lecture 1 slide 30*
+
+Planning、memory、tools 和 action 是 agent 的功能面向；模型提供推理與決策能力，harness 則負責提供資訊、執行工具和管理運作流程，兩者共同實現這些功能。例如 memory：模型判斷什麼值得記，harness 負責存起來、需要時再放回 context。
+
 我原本的理解是 **agent = model + harness**，但光看系統由哪些東西組成，判斷不出它怎麼運作。舉個例子：一個 RAG chatbot，固定先 retrieve、再塞進 prompt、再回答一次。有模型、檢索器和 prompt 模板，仍不足以判斷它是不是 agent。還要看模型是否能根據執行結果，動態決定接下來的行動。這種照固定順序跑的系統叫做 **workflow**：它和 agent 都屬於 **compound AI system**，差別在於**誰決定步驟**。
 
 ![Workflows vs. Agents: Who Decides the Steps?](/images/blog/cs329z-l01-slide56-workflow-vs-agent.png)
