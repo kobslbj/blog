@@ -1,0 +1,167 @@
+---
+title: "OSTEP 筆記 01｜作業系統"
+publishedAt: "2026-11-28"
+---
+
+這篇整理 [OSTEP](https://pages.cs.wisc.edu/~remzi/OSTEP/) 第 2 章（整本書的預告）和第 6 章前半（kernel 和 system call），每個概念都在自己的 Mac 上跑實驗驗證。
+
+> 這是我的個人筆記，不是教科書的內容。實驗結果是在我自己的 Mac（8 核：4 顆效能核心、4 顆節能核心）上跑的，換一台電腦數字會不一樣。
+
+**目錄**
+
+1. [OS 在做什麼](#os-在做什麼)
+2. [虛擬化 CPU：我在 Mac 上跑了 16 個程式](#虛擬化-cpu-我在-mac-上跑了-16-個程式)
+3. [虛擬化記憶體](#虛擬化記憶體)
+4. [並行：我親手做出一個 race condition](#並行-我親手做出一個-race-condition)
+5. [持久性：write() 成功不代表存進硬碟](#持久性-write-成功不代表存進硬碟)
+6. [Kernel 和 system call](#kernel-和-system-call)
+7. [Takeaway](#takeaway)
+8. [參考資料](#參考資料)
+
+## OS 在做什麼
+
+OSTEP 對OS的定義是 讓很多程式能安全、有效率地共用同一台電腦。它用三個角度描述 OS：
+
+| 角色 | 意思 |
+| --- | --- |
+| 虛擬化 | 把 CPU、記憶體、硬碟這些實體資源，變成更好用的虛擬版本 |
+| 標準函式庫 | 提供幾百個 system call，讓程式請 OS 做事 |
+| 資源管理者 | 很多程式要搶同一份資源，由 OS 決定誰用、用多少 |
+
+我用餐廳來記虛擬化 CPU：一個廚師輪流幫五桌炒菜，換得夠快，每桌都覺得有專屬廚師。OS 讓程式輪流用 CPU，每個程式都以為自己獨佔整顆 CPU。
+
+整本書會一直出現兩個詞：機制（mechanism）是「怎麼做到」，例如怎麼把 CPU 從 A 換給 B；策略（policy）是「決定做什麼」，例如下一個讓誰跑、跑多久。
+
+OS 提供「限制一個工作可以在哪些核心執行」的機制；我決定把哪個工作綁到哪顆核心，是策略。不過綁定不等於獨佔，其他工作仍然可能被排到同一顆核心，要把核心保留給特定工作，還需要額外設定。後來的判斷法是：做事的方法沒變、只有規則變了，就是策略。
+
+## 虛擬化 CPU：我在 Mac 上跑了 16 個程式
+
+OSTEP 的 `cpu.c` 很簡單：反覆查時間、原地空轉大約一秒（忙等），再印出一個字，永遠不停。所以它等待的那一秒也一直在吃 CPU。
+
+我先同時跑 4 個，都正常每秒印一次。它們可能分散到不同核心平行執行，但只看輸出沒辦法確認排程方式，它們也仍然在 OS 的排程之下。
+
+為了更容易看到時間被分攤，我改跑 16 個，讓這些一直需要 CPU 的工作超過 8 顆核心。8 核總共可以提供 800% 的 CPU 時間，16 個平均分，每個大約 50%。實際跑出來，`top` 是這樣：
+
+```text
+CPU usage: 68.82% user, 31.17% sys, 0.0% idle
+Processes: 604 total, 32 running, 572 sleeping
+
+COMMAND  %CPU
+cpu      48.0
+cpu      47.8
+cpu      47.2
+...（16 個 cpu 都在 45%–48% 之間）
+```
+
+16 個 `cpu` 各拿到 45% 到 48%，符合輪流執行的情況。50% 只是平均分配的粗估，實際還有其他程式和系統工作；另外，效能核心和節能核心拿到一樣的 CPU 時間，也不代表做完一樣多的工作。
+
+這張畫面還有一個讓我很意外的地方：電腦上有 604 個程式，標成 running 的只有 32 個，572 個都在 sleeping。這讓我看到很多工作當下其實都在等，可能在等輸入、網路或計時器。不過只看這一張畫面，我還不知道它們各自在等什麼、等了多久；32 個 running 也不代表有 32 個程式同時在核心上執行。
+
+## 虛擬化記憶體
+
+這段我沒有親自跑，是書上的示範：同時跑兩個 `mem.c`，兩個程式印出一樣的記憶體位址，卻各自把數字加一，互不干擾。書上提醒，要重現這個相同位址的示範，得先停用位址隨機化（ASLR）。我沒有在 Mac 上實測；開著 ASLR 時，不能預期每次都拿到相同的位址。
+
+重點是每個程式都以為自己獨佔整個記憶體。我用大樓來想：兩棟大樓都有 201 號房，門牌一樣，但根本是不同的房間。程式看到的是自己的虛擬位址，OS 再把它對應到實體記憶體上的位置，所以同樣的虛擬位址不代表同一份資料。
+
+![兩個 process 都使用虛擬位址 0x200000，OS 把它們對應到實體記憶體裡不同的位置](/images/blog/ostep-01-virtual-memory.svg)
+
+讀到這裡我想到 Docker，查了才知道它們隔離的方式不太一樣。我先用這個方式區分：
+
+| | 大致是什麼 | 要注意的地方 |
+| --- | --- | --- |
+| Process | 有自己的虛擬位址空間 | 也可以明確和其他 process 共享部分記憶體 |
+| Container | 通常是一組 process，由同一個 kernel 提供額外的隔離 | 隔離哪些東西、有沒有資源上限，都看設定（Docker 預設沒有資源上限） |
+| VM | 執行自己的 guest kernel，由虛擬化層管理資源 | 也可能和主機共享目錄或裝置 |
+
+這也解釋了為什麼 Mac 上的 Docker 要先跑一台 Linux 虛擬機：在 Mac 上跑的是 Linux container，它們需要 Linux kernel，而 macOS 的 kernel 不是 Linux。
+
+## 並行：我親手做出一個 race condition
+
+先分清楚 process 和 thread：process 是一棟大樓，thread 是住在同一棟大樓裡的人。不同 process 的記憶體各自獨立，同一個 process 裡的 thread 共用記憶體。
+
+![左邊兩個 process 各有自己的記憶體；右邊一個 process 裡的兩個 thread 共用記憶體，但各有自己的 stack](/images/blog/ostep-01-process-thread.svg)
+
+共用記憶體會出什麼事？OSTEP 的 `threads.c` 開兩個 thread，各把同一個變數加 `loops` 次：
+
+| loops | 應該是 | 我跑出來的 |
+| --- | --- | --- |
+| 1,000 | 2,000 | 2,000 |
+| 1,000,000 | 2,000,000 | 1,025,845 |
+| 1,000,000（再跑一次） | 2,000,000 | 1,023,621 |
+
+少了將近一半，而且每次結果都不一樣。我先把 `counter++` 想成 CPU 裡的三步：讀、加、寫。兩個 thread 交錯時，可能都讀到 100、都寫回 101，有一次加法就被蓋掉了。這叫 race condition。不過這個模型只是幫我理解問題：這段 C 程式在沒有同步的情況下同時讀寫同一個變數，是 data race，在 C 語言裡屬於未定義行為，不能保證實際結果只會少加幾次。實際編譯出來也不一定剛好是三條指令，但重點是 `counter++` 不是受保護的原子操作；程式裡的 `volatile` 也解決不了同步問題，要保證結果正確，還是需要 lock 或合適的原子操作。
+
+![兩個 thread 交錯執行讀、加、寫，counter 從 100 只變成 101，其中一次加法被蓋掉](/images/blog/ostep-01-race-condition.svg)
+
+我卡最久的是：為什麼 1,000 次是對的？一個可能的解釋是：加 1,000 次太快，第一個 thread 已經加完，第二個 thread 才剛開始，兩個沒有同時在改。但也可能有交錯、只是碰巧沒有蓋掉，我沒有追蹤執行順序，不能確定。能確定的是這次結果正確不代表程式沒有 bug。這也是並行 bug 麻煩的地方：測試時資料量小一切正常，上線流量一大才出錯。
+
+## 持久性：write() 成功不代表存進硬碟
+
+記憶體一斷電就清空，要長期保存資料，要靠硬碟，由 OS 的檔案系統管理。OSTEP 的 `io.c` 用了四個 system call：`open`、`write`、`fsync`、`close`。
+
+我原本以為 `write()` 成功就代表寫進硬碟了，其實不是。我用寄信來記：`write()` 像把信交給郵局櫃台，櫃台說「收到了」，但信可能先放在籃子裡，等多一點再一起送。這時郵局失火（斷電），籃子裡的信就沒了。
+
+還有一點也讓我意外：`write()` 成功後，別的程式（例如 `cat`）就可能從 OS 的檔案快取讀到剛寫的內容。所以我現在把「別的程式讀得到」和「斷電後還留得住」分開看。
+
+`fsync()` 會要求 OS 把檔案的資料和相關資訊同步下去，比只有 `write()` 可靠得多，但也不是萬無一失：在 macOS 上，`fsync` 之後資料仍可能留在儲存裝置自己的快取裡，要用 `F_FULLFSYNC` 才會進一步要求裝置清空快取；新建或重新命名檔案時，也不只要顧檔案內容。如果我要承諾使用者「斷電後還存得住」，就得確認平台的同步保證和整個存檔流程。
+
+![資料從程式經過 OS 檔案快取、裝置快取，最後才存進非揮發性儲存；前兩層斷電可能不見](/images/blog/ostep-01-write-fsync.svg)
+
+## Kernel 和 system call
+
+kernel 是 OS 裡權限最高、直接管理硬體的部分。廣義的作業系統還包含搭配它的系統服務、函式庫和工具，例如 Finder、終端機，它們雖然由 macOS 提供，還是和 Chrome 一樣跑在 user mode。macOS 用的 kernel 叫 XNU，是 Darwin 的核心。
+
+我在這裡先用 user mode 和 kernel mode 兩種權限層級來理解（實際的 CPU 可能還有其他層級，但這章的重點是這兩種）：一般程式跑在 user mode，不能任意執行特權操作，例如直接碰硬碟；kernel 跑在 kernel mode，可以執行這些操作、管理系統資源。這個限制由 OS 配合 CPU 硬體落實，不是靠程式自己守規矩。
+
+程式要讀檔案、上網、印字到螢幕，自己沒權限，就要透過 system call 請 kernel 代辦：
+
+1. 程式呼叫 `read()`，看起來就像一般的函式，C 函式庫會把編號和參數放好
+2. 執行一條特殊指令（trap），CPU 切到 kernel mode，跳到 kernel 預先設定好的入口
+3. kernel 依編號知道要讀檔，檢查參數和權限，再去做
+4. CPU 切回 user mode，程式拿到結果繼續跑
+
+![system call 流程：程式在 user mode 呼叫 read，trap 進 kernel mode，kernel 依編號處理後返回](/images/blog/ostep-01-system-call.svg)
+
+我用銀行來記：客戶在大廳可以自己填單，但要動金庫就得到櫃台請行員辦。而且客戶不能自己挑門進櫃台後面，不然壞人會直接走「核對完身份之後」那扇門，跳過檢查。程式也一樣，只能從固定入口進 kernel，不能從中途開始執行；當然 kernel 自己也必須把參數和權限檢查寫對。
+
+### 我量了一次 system call 有多貴
+
+我寫了一個小程式，比較兩段迴圈：一段呼叫一般函式，一段呼叫讀 0 個 byte 的 `read()`（幾乎什麼都不讀，但還是要走一趟 system call 的流程），各做 100 萬次，跑 5 輪取中位數：
+
+| 測試 | 每次約多久 |
+| --- | --- |
+| 一般函式呼叫的迴圈 | 0.8 奈秒 |
+| 0-byte `read()` 的迴圈 | 256.5 奈秒 |
+
+我原本猜 2 倍，實際大約 325 倍。要注意這是這兩段迴圈每次執行的平均時間，不是純粹切換 user mode 和 kernel mode 的成本，也不能代表所有 system call；我前後跑了三次，倍數從 87 到 325 都有，量效能真的要多跑幾輪。
+
+這讓我比較能體會為什麼系統常常想辦法少呼叫 system call。例如 `printf` 怎麼緩衝要看輸出去哪裡：連到終端機時通常是遇到換行就送出，重新導向到檔案或 pipe 時，通常會先累積一段再寫出去。
+
+用我量到的數字粗算一下（只是示意）：假設每次呼叫固定花 250 奈秒，100 萬次就是 0.25 秒；如果每 200 行才寫一次，只要 5,000 次，大約 0.00125 秒。不過這不代表實際輸出會快 200 倍，因為 `write()` 還有資料量、輸出裝置等其他成本。我從這個實驗學到的是：先量自己的工作負載，再判斷批次處理能省多少。
+
+## Takeaway
+
+讀完這兩章，我以後遇到效能或系統問題，會先問自己幾件事：
+
+1. **程式真的在搶 CPU 嗎？** 先看有多少工作一直需要 CPU、多少其實在等。電腦上幾百個程式，大部分時間都在 sleeping。
+2. **有沒有多個 thread 在改同一份資料？** 小資料測試沒出錯不代表沒有 bug，要看共用的資料有沒有用 lock 或原子操作保護。
+3. **資料真的存下來了嗎？** `write()` 成功只代表交給 OS；要承諾斷電不掉，得確認平台的同步保證和整個存檔流程。
+4. **哪個操作最貴，能不能少做幾次？** 我量到的 system call 迴圈比一般函式慢上百倍。先量，再決定要不要用緩衝、批次或重複使用來減少這種操作。
+
+下一篇會進入 process：程式跑起來之後，OS 怎麼建立它、怎麼在不同 process 之間切換。
+
+## 參考資料
+
+### 教材
+
+- **Operating Systems: Three Easy Pieces**：Remzi H. Arpaci-Dusseau、Andrea C. Arpaci-Dusseau · [pages.cs.wisc.edu](https://pages.cs.wisc.edu/~remzi/OSTEP/)
+  - Ch 2 Introduction to Operating Systems · [intro.pdf](https://pages.cs.wisc.edu/~remzi/OSTEP/intro.pdf)
+  - Ch 6 Mechanism: Limited Direct Execution · [cpu-mechanisms.pdf](https://pages.cs.wisc.edu/~remzi/OSTEP/cpu-mechanisms.pdf)
+- **OSTEP 範例程式** · [github.com/remzi-arpacidusseau/ostep-code](https://github.com/remzi-arpacidusseau/ostep-code)
+- **作業系統（字幕版）**：清華大學周志遠教授，清大開放式課程 · [ocw.nthu.edu.tw](https://ocw.nthu.edu.tw/courses/295)
+
+### 延伸閱讀
+
+- **fsync(2)**：Apple 開發者文件，說明 `fsync` 與 `F_FULLFSYNC` 的差別 · [developer.apple.com](https://developer.apple.com/library/archive/documentation/System/Conceptual/ManPages_iPhoneOS/man2/fsync.2.html)
+- **setvbuf(3)**：Apple 開發者文件，說明 stdio 的緩衝方式 · [developer.apple.com](https://developer.apple.com/library/archive/documentation/System/Conceptual/ManPages_iPhoneOS/man3/setvbuf.3.html)
+- **Docker 資源限制**：Docker 文件 · [docs.docker.com](https://docs.docker.com/engine/containers/resource_constraints/)

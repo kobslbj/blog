@@ -1,0 +1,72 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 360" font-family="'PingFang TC','Noto Sans TC','Heiti TC',system-ui,sans-serif">
+  <style>
+    .bg{fill:#ffffff}
+    .frame{fill:#fafafa;stroke:#a3a3a3;stroke-width:1.5}
+    .a{fill:#dbeafe;stroke:#3b82f6;stroke-width:1.5}
+    .b{fill:#ffedd5;stroke:#f97316;stroke-width:1.5}
+    .cell{fill:#f5f5f5;stroke:#d4d4d4;stroke-width:1}
+    .t{fill:#171717}
+    .m{fill:#525252}
+    .la{stroke:#3b82f6;stroke-width:1.8;fill:none}
+    .lb{stroke:#f97316;stroke-width:1.8;fill:none}
+    .aha{fill:#3b82f6}
+    .ahb{fill:#f97316}
+    @media (prefers-color-scheme: dark){
+      .bg{fill:#0a0a0a}
+      .frame{fill:#171717;stroke:#525252}
+      .a{fill:#172554;stroke:#60a5fa}
+      .b{fill:#431407;stroke:#fb923c}
+      .cell{fill:#262626;stroke:#404040}
+      .t{fill:#f5f5f5}
+      .m{fill:#a3a3a3}
+      .la{stroke:#60a5fa}
+      .lb{stroke:#fb923c}
+      .aha{fill:#60a5fa}
+      .ahb{fill:#fb923c}
+    }
+  </style>
+  <defs>
+    <marker id="ma" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+      <path class="aha" d="M0,0 L10,5 L0,10 z"/>
+    </marker>
+    <marker id="mb" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+      <path class="ahb" d="M0,0 L10,5 L0,10 z"/>
+    </marker>
+  </defs>
+  <rect class="bg" width="800" height="360" rx="12"/>
+
+  <text class="t" x="400" y="32" text-anchor="middle" font-size="16" font-weight="700">同樣的虛擬位址，對應到不同的實體位置</text>
+
+  <!-- Process A -->
+  <rect class="frame" x="40" y="60" width="220" height="110" rx="10"/>
+  <text class="t" x="150" y="86" text-anchor="middle" font-size="14" font-weight="700">Process A 看到的位址</text>
+  <rect class="a" x="70" y="104" width="160" height="44" rx="6"/>
+  <text class="t" x="150" y="131" text-anchor="middle" font-size="14" font-family="ui-monospace,Menlo,monospace">0x200000</text>
+
+  <!-- Process B -->
+  <rect class="frame" x="40" y="200" width="220" height="110" rx="10"/>
+  <text class="t" x="150" y="226" text-anchor="middle" font-size="14" font-weight="700">Process B 看到的位址</text>
+  <rect class="b" x="70" y="244" width="160" height="44" rx="6"/>
+  <text class="t" x="150" y="271" text-anchor="middle" font-size="14" font-family="ui-monospace,Menlo,monospace">0x200000</text>
+
+  <!-- 實體記憶體 -->
+  <rect class="frame" x="540" y="56" width="220" height="258" rx="10"/>
+  <text class="t" x="650" y="82" text-anchor="middle" font-size="14" font-weight="700">實體記憶體</text>
+  <rect class="cell" x="560" y="96" width="180" height="34" rx="4"/>
+  <text class="m" x="650" y="118" text-anchor="middle" font-size="12">其他資料</text>
+  <rect class="a" x="560" y="136" width="180" height="34" rx="4"/>
+  <text class="t" x="650" y="158" text-anchor="middle" font-size="13">A 的那一格</text>
+  <rect class="cell" x="560" y="176" width="180" height="34" rx="4"/>
+  <text class="m" x="650" y="198" text-anchor="middle" font-size="12">其他資料</text>
+  <rect class="cell" x="560" y="216" width="180" height="34" rx="4"/>
+  <text class="m" x="650" y="238" text-anchor="middle" font-size="12">其他資料</text>
+  <rect class="b" x="560" y="256" width="180" height="34" rx="4"/>
+  <text class="t" x="650" y="278" text-anchor="middle" font-size="13">B 的那一格</text>
+
+  <!-- 對應箭頭 -->
+  <path class="la" d="M232,126 C380,126 410,153 556,153" marker-end="url(#ma)"/>
+  <path class="lb" d="M232,266 C380,266 410,273 556,273" marker-end="url(#mb)"/>
+  <text class="m" x="400" y="210" text-anchor="middle" font-size="13">OS 負責對應</text>
+
+  <text class="m" x="400" y="342" text-anchor="middle" font-size="12">簡化示意：實際的對應方式（paging）之後的章節才會講</text>
+</svg>

@@ -1,0 +1,80 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 430" font-family="'PingFang TC','Noto Sans TC','Heiti TC',system-ui,sans-serif">
+  <style>
+    .bg{fill:#ffffff}
+    .head{fill:#f5f5f5;stroke:#d4d4d4;stroke-width:1}
+    .row{fill:#ffffff;stroke:#e5e5e5;stroke-width:1}
+    .a{fill:#dbeafe;stroke:#3b82f6;stroke-width:1.2}
+    .b{fill:#ffedd5;stroke:#f97316;stroke-width:1.2}
+    .warn{fill:#fee2e2;stroke:#ef4444;stroke-width:1.5}
+    .t{fill:#171717}
+    .m{fill:#525252}
+    .w{fill:#b91c1c}
+    @media (prefers-color-scheme: dark){
+      .bg{fill:#0a0a0a}
+      .head{fill:#1f1f1f;stroke:#404040}
+      .row{fill:#0a0a0a;stroke:#262626}
+      .a{fill:#172554;stroke:#60a5fa}
+      .b{fill:#431407;stroke:#fb923c}
+      .warn{fill:#450a0a;stroke:#f87171}
+      .t{fill:#f5f5f5}
+      .m{fill:#a3a3a3}
+      .w{fill:#fca5a5}
+    }
+  </style>
+  <rect class="bg" width="800" height="430" rx="12"/>
+
+  <text class="t" x="400" y="32" text-anchor="middle" font-size="16" font-weight="700">兩個 thread 同時做 counter++，有一次加法被蓋掉</text>
+
+  <!-- 表頭 -->
+  <rect class="head" x="40" y="52" width="80" height="36"/>
+  <rect class="head" x="120" y="52" width="220" height="36"/>
+  <rect class="head" x="340" y="52" width="220" height="36"/>
+  <rect class="head" x="560" y="52" width="200" height="36"/>
+  <text class="t" x="80" y="75" text-anchor="middle" font-size="13" font-weight="700">時間</text>
+  <text class="t" x="230" y="75" text-anchor="middle" font-size="13" font-weight="700">Thread A</text>
+  <text class="t" x="450" y="75" text-anchor="middle" font-size="13" font-weight="700">Thread B</text>
+  <text class="t" x="660" y="75" text-anchor="middle" font-size="13" font-weight="700">記憶體裡的 counter</text>
+
+  <!-- 列（每列 40 高，從 y=88 開始） -->
+  <g font-size="13">
+    <rect class="row" x="40" y="88" width="720" height="40"/>
+    <text class="m" x="80" y="113" text-anchor="middle">1</text>
+    <rect class="a" x="140" y="95" width="180" height="26" rx="5"/>
+    <text class="t" x="230" y="113" text-anchor="middle">讀：拿到 100</text>
+    <text class="t" x="660" y="113" text-anchor="middle">100</text>
+
+    <rect class="row" x="40" y="128" width="720" height="40"/>
+    <text class="m" x="80" y="153" text-anchor="middle">2</text>
+    <rect class="b" x="360" y="135" width="180" height="26" rx="5"/>
+    <text class="t" x="450" y="153" text-anchor="middle">讀：也拿到 100</text>
+    <text class="t" x="660" y="153" text-anchor="middle">100</text>
+
+    <rect class="row" x="40" y="168" width="720" height="40"/>
+    <text class="m" x="80" y="193" text-anchor="middle">3</text>
+    <rect class="a" x="140" y="175" width="180" height="26" rx="5"/>
+    <text class="t" x="230" y="193" text-anchor="middle">加：算出 101</text>
+    <text class="t" x="660" y="193" text-anchor="middle">100</text>
+
+    <rect class="row" x="40" y="208" width="720" height="40"/>
+    <text class="m" x="80" y="233" text-anchor="middle">4</text>
+    <rect class="b" x="360" y="215" width="180" height="26" rx="5"/>
+    <text class="t" x="450" y="233" text-anchor="middle">加：也算出 101</text>
+    <text class="t" x="660" y="233" text-anchor="middle">100</text>
+
+    <rect class="row" x="40" y="248" width="720" height="40"/>
+    <text class="m" x="80" y="273" text-anchor="middle">5</text>
+    <rect class="a" x="140" y="255" width="180" height="26" rx="5"/>
+    <text class="t" x="230" y="273" text-anchor="middle">寫：存回 101</text>
+    <text class="t" x="660" y="273" text-anchor="middle">101</text>
+
+    <rect class="row" x="40" y="288" width="720" height="40"/>
+    <text class="m" x="80" y="313" text-anchor="middle">6</text>
+    <rect class="b" x="360" y="295" width="180" height="26" rx="5"/>
+    <text class="t" x="450" y="313" text-anchor="middle">寫：也存回 101</text>
+    <rect class="warn" x="600" y="295" width="120" height="26" rx="5"/>
+    <text class="w" x="660" y="313" text-anchor="middle" font-weight="700">101（應該是 102）</text>
+  </g>
+
+  <text class="t" x="400" y="364" text-anchor="middle" font-size="14">兩個 thread 各加了一次，counter 卻只多 1：其中一次加法被蓋掉了</text>
+  <text class="m" x="400" y="394" text-anchor="middle" font-size="12">用「讀、加、寫」模型示意；實際的 C 程式是 data race，行為沒有保證</text>
+</svg>
