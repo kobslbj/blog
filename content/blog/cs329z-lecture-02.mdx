@@ -1,0 +1,153 @@
+---
+title: "CS 329Z: Engineering AI Agents - lecture2"
+publishedAt: "2026-11-28"
+summary: "LLMs for Builders"
+image: "/images/blog/cs329z-l02-cover.png"
+---
+
+課堂錄影：[CS 329Z Lecture 2: LLMs for Builders](https://www.youtube.com/watch?v=Vr1NzH8bT44)
+
+前一篇講的是 agent 的整體架構，今天這篇再往下了解模型本身。講者 Michael Ryan 一開始就說，這門課之後大多是「拿模型來用」，但懂模型怎麼訓練、怎麼推論，才知道它有哪些限制，例如懂 KV cache 和不同的 attention，才判斷得出某個模型適不適合長 context 的任務。
+
+> 這是我的個人筆記，不是課程的官方內容。哪些是課堂上講的、哪些是我自己的想法，我會盡量分開寫。
+
+**目錄**
+
+1. [語言模型在做什麼](#語言模型在做什麼)
+2. [Attention：模型怎麼回頭看前面的字](#attention-模型怎麼回頭看前面的字)
+3. [訓練：模型怎麼學會說話](#訓練-模型怎麼學會說話)
+4. [推論：為什麼第一個字特別慢](#推論-為什麼第一個字特別慢)
+5. [用在 agent 上：structured output 與 context engineering](#用在-agent-上-structured-output-與-context-engineering)
+6. [Takeaway](#takeaway)
+7. [參考資料](#參考資料)
+
+## 語言模型在做什麼
+
+語言模型每一步做的事情都一樣：給定前面所有的 token，算出下一個 token 的機率，再從中選一個，接到後面，重複。很像手機鍵盤的自動選字，只是它看的是前面所有文字，而且替詞彙表裡每個 token 都算機率。
+
+算出機率之後，還有一個決定：這一步到底選哪個？
+
+| 方法 | 怎麼選 | 特性 |
+| --- | --- | --- |
+| Greedy | 每一步都選機率最高的 | 選法固定，不會抽樣 |
+| Top-k | 只從機率最高的 k 個裡抽 | 候選數量固定 |
+| Top-p | 從機率最高的開始加，加到累積機率達 p 為止，再從裡面抽 | 候選數量會依分布調整 |
+| Temperature | 調整機率分布的集中程度，可以和 top-k、top-p 一起用 | 低：穩定；高：多樣但容易出錯 |
+| Beam search | 同時保留多條候選序列，最後挑分數最好的 | 比較花時間和記憶體 |
+
+我一開始以為「每次選最高的」只是風格比較像，後來知道理論上會完全一樣，因為選法是固定的。不過實際用 API 時，推論服務的批次配置和浮點運算可能造成微小差異，讓分數很接近的兩個 token 交換名次。所以 temperature 設成 0，也不保證每次都能拿到一模一樣的結果，不能直接當成可重現的測試。
+
+## Attention：模型怎麼回頭看前面的字
+
+讀到「這台 server 當機了，因為它的記憶體用完了」，模型怎麼知道「它」是 server？靠的是 attention：讀到每個字時，回頭看前面所有的字，決定每個字要參考多少，再把資訊混合起來。
+
+Q、K、V 可以把它想成交友 app：
+
+| 角色 | 交友 app | 在 attention 裡 |
+| --- | --- | --- |
+| Query | 我在找什麼樣的人 | 這個字想找什麼資訊 |
+| Key | 每個人的自我介紹標籤 | 每個字是什麼樣的資訊 |
+| Value | 對方的聯絡資料 | 每個字真正要傳的內容 |
+
+query 和 key 越像，分數越高，分數轉成比例後，再照比例把 value 混合起來。每個字同時有這三種身份，而且這些數字是模型自己學出來的，不是人設計的。
+
+### 為什麼長 context 很貴
+
+一般的 attention（full attention）讓每個字都和前面每個字比對，n 個字大約有 n² 組配對，長度變 100 倍，attention 的配對數大約變 10,000 倍。要注意這裡算的是 attention 的配對數，不是整個 API 的費用或等待時間也變 10,000 倍。Transformer 能紅起來，是因為整段文字可以同時處理，很適合 GPU 訓練；代價就是長 context 很貴。
+
+有人改用 linear attention：把前面的內容壓縮成固定大小的狀態，像考試只能帶一張小抄。這能降低 attention 隨長度增加的運算和記憶體負擔，實際能快多少要看實作。代價是壓縮可能犧牲細節：投影片展示的幾個模型，在「大海撈針」這類長 context 測試裡退步得比較明顯。現在的模型常混用兩種。
+
+所以 agent 要讀很長的工具結果時，要看兩件事：context window 決定放不放得下，attention 的種類會影響放進去之後能不能用到細節。
+
+context window 的上限是怎麼來的，我在[第一篇](/blog/cs329z-lecture-01)寫過。這堂補上一個觀念：attention 的運算本身沒有指定固定的 context 長度，但位置編碼的設計、模型設定和服務資源仍可能形成限制；訓練時看過多長的文字，也會影響模型能不能可靠地用好長文。所以做 agent 時，我會分開確認兩件事：服務最多能收多少 token，以及模型在這個長度下還能不能把我的任務做對。
+
+## 訓練：模型怎麼學會說話
+
+訓練像寫填空題。讀到 "The class was about"，訓練資料裡實際出現的下一個 token 是 "how"（其他接法在英文裡也可能合理，但這筆資料寫的是 how）。模型給 "how" 的機率越高，扣分越少，再依扣分調整自己。這個標準的預訓練步驟直接拿 how 來算扣分，不需要先抽一個答案，所以也用不到 temperature。生成時就不一樣了：沒有現成的答案，模型要自己選，選了還會影響後面。
+
+三個階段：
+
+| 階段 | 比喻 | 學什麼 |
+| --- | --- | --- |
+| Pretraining | 大量閱讀整座圖書館 | 從大量一般文字預測下一個 token |
+| Midtraining | 高三專攻目標科目 | 換成更多程式、數學等目標領域的資料，繼續預測下一個 token |
+| Posttraining | 職前訓練，學會當助理 | 用示範回答、偏好比較或可驗證的結果，教模型表現出想要的行為 |
+
+posttraining 也不全是「打分數」。指令微調（SFT）是給模型看「使用者問題 + 理想回答」，模型一樣是用預測下一個 token 的方式學習，只是資料換成示範回答。職前訓練的比喻剛好：新人可以看前輩的示範，也可以交作業拿回饋。
+
+課程展示的 RLHF 流程有三步：先用示範回答做 SFT，再用人類比較回答好壞的資料訓練一個獎勵模型，最後用強化學習調整模型。問題在偏好訊號：如果評分者比較喜歡符合自己立場的回答，獎勵就可能偏向附和使用者，即使使用者講錯了。這也是第一堂提到的 sycophancy 的來源之一。另一種方法 RLVR 改用單元測試這類可以驗證的結果當獎勵，但驗證器本身也要設計好，才不會讓模型通過很弱的測試就拿到分數。另外，資料品質本身就是設計決策：DCLM-Baseline 經過清理、去重和品質篩選後，只留下原始文件數的 1.4%。
+
+## 推論：為什麼第一個字特別慢
+
+![Prefill and Decode](/images/blog/cs329z-l02-slide123-prefill-decode.png)
+
+*圖片來源：CS 329Z Lecture 2 slide 123*
+
+推論分兩個階段，我用考試來記：
+
+| 階段 | 比喻 | 影響什麼 |
+| --- | --- | --- |
+| Prefill | 讀題目，整份同時看 | 第一個字多久出來（TTFT） |
+| Decode | 寫答案，一個字一個字寫 | 之後每個字多快（TPOT） |
+
+KV cache 我第一次沒聽懂，後來是這樣想通的：每寫一個新字，attention 都要用到前面所有字的 key 和 value。但因為每個字只能看前面，舊字的 key 和 value 算出來之後就不會再變。所以把它們存起來，寫第 101 個字時只要算剛寫好的那一個，不用把前面 100 個全部重算。像開會時桌上的名牌：新人進來，舊名牌不用重寫，但新人還是得掃過桌上所有名牌，才知道這次要參考誰。
+
+這也解開了我原本的疑問：都有 cache 了，為什麼 context 變長還是會慢？因為 cache 省下的是「重算舊 K、V」的工作，但每一步新的 query 還是要和前面約 n 個 key 比對，該看的資料還是得看。名牌越多，佔的 GPU 記憶體也越多。
+
+兩個階段常卡在不同的地方。長 prompt 的 prefill 是大量計算，常受 GPU 計算能力限制；小批次的 decode 每寫一個字都要讀一次模型權重和 KV cache，常受記憶體頻寬限制。所以「讓 prompt 變短」和「讓每個字出得更快」是兩種不同的優化。
+
+最後是兩個容易混在一起的方向：
+
+| | Speculative decoding | Inference-time scaling |
+| --- | --- | --- |
+| 目的 | 更快 | 更好 |
+| 做法 | 小模型先寫草稿，大模型一次檢查 | 先長篇推理、或產生多個答案再挑 |
+| 代價 | 多跑一個小模型；經典演算法保持大模型的輸出分布 | 通常需要更多計算，費用和等待時間看做法而定 |
+
+我原本把「產生 5 個答案再挑一個」當成 reasoning，其實它叫 best-of-5，是多次取樣的一種，也可以和推理一起用。如果五個候選答案的長度和單次回答差不多，候選答案的輸出 token 大約是 5 倍，另外還要算上處理輸入和挑選的成本；如果五個答案平行生成，等待時間不一定會變 5 倍。挑選也要有可靠的方法，例如單元測試。
+
+## 用在 agent 上：structured output 與 context engineering
+
+模型要和工具、程式溝通，需要一份共同的格式。課程分別介紹了三種做法：用 DSPy 這類 signature 描述要哪些輸入輸出欄位；用 constrained decoding（例如 SGLang）在生成時規定哪些 token 是合法的；或是用分類器直接把輸入對應成標籤。講者也提到 DSPy 可以搭配 SGLang 這類工具，確保模型真的照格式輸出。我自己的工程理解是：如果只需要從固定的幾個標籤裡選，也可以考慮分類器。不管用哪一種，我還是會在 harness 加上參數和權限檢查，因為格式合法不代表內容正確，選錯工具、填錯參數還是要靠 harness 擋。
+
+![Prompt engineering vs. context engineering](/images/blog/cs329z-l02-slide161-context-engineering.png)
+
+*圖片來源：CS 329Z Lecture 2 slide 161*
+
+context engineering 是決定每次送給模型什麼：system prompt、對話紀錄、memory、工具結果、檔案。為什麼不全部放？除了 n² 很貴，還有 context rot：講者展示的 OOLONG-synth 測試要模型分析很多筆資料再彙總，Gemini 2.5 Pro 在 8K token 時約 0.88 分，到 256K 時掉到約 0.13 分。
+
+課程給的四個建議：
+
+- 不要塞太多。只給 read、write、edit、bash 四個工具的開源 harness Pi，在那組 Terminal-Bench 2 任務上仍能和 Codex、Claude Code 競爭：四個模型裡有兩個 Pi 最高，一個和 Codex 平手，一個輸給 Claude Code。下次想替 agent 加工具，我會先測它究竟多解了哪些題。
+- 新內容往後加。投影片講的是重用共同的開頭：如果每輪都把現在時間插在 system prompt 最前面，後面那一大串相同的內容也可能得重算。把固定的規則放前面、每輪新增的工具結果接在後面，支援 prefix caching 的服務就有機會省下這段 prefill。
+- 用實驗決定格式和內容，不要用猜的。
+- 壓縮要小心。第一堂那個「刪信前先確認」被壓縮掉的案例，講者又提了一次。
+
+## Takeaway
+
+學完這堂，我下次做 agent 會先問自己三個問題：
+
+1. **模型裝得下我的資料，它也做得完我的任務嗎？** 我會分開測「從長文件裡找出一條規則」和「把每一筆紀錄分類後統計」。兩件事都叫長 context，模型要做的工作差很多。
+2. **使用者說 agent 很慢，他等的是哪一段？** 我會先分開量送出到第一個字的時間，以及之後每個字的生成速度，再決定要縮短 prompt、利用快取，還是去查 decode。
+3. **工具呼叫的 JSON 合法，我敢直接執行嗎？** 例如模型填了一個格式正確的 `email_id`，程式還是要確認它是不是使用者剛才指定的那封信。這也是前一篇刪信案例的教訓。
+
+下一堂是 RAG，會講怎麼從大量資料裡找出該放進 context 的那幾份。
+
+## 參考資料
+
+### 課程材料
+
+- **Lecture 2 投影片**：LLMs for Builders，Stanford CS 329Z · [lecture02.pdf](https://web.stanford.edu/class/cs329z/slides/lecture02.pdf)
+- **Lecture 2 課堂錄影** · [YouTube](https://www.youtube.com/watch?v=Vr1NzH8bT44)
+- **課程網站**：Stanford CS 329Z: Engineering AI Agents · [cs329z.stanford.edu](https://cs329z.stanford.edu/)
+
+### 延伸閱讀
+
+- **Attention Is All You Need**：Vaswani et al.，2017 · [arXiv:1706.03762](https://arxiv.org/abs/1706.03762)
+- **Lost in the Middle: How Language Models Use Long Contexts**：Liu et al.，2023 · [arXiv:2307.03172](https://arxiv.org/abs/2307.03172)
+- **OOLONG: Evaluating Long Context Reasoning and Aggregation Capabilities**（slide 164 的圖片來源） · [arXiv:2511.02817](https://arxiv.org/abs/2511.02817)
+- **SWE-smith: Scaling Data for Software Engineering Agents**：Yang et al.，2025 · [arXiv:2504.21798](https://arxiv.org/abs/2504.21798)
+- **HarnessTax: How Much Does the Harness Matter for Coding Agents?**（slide 166 的圖片來源）：Arena Team · [arena.ai](https://arena.ai/blog/coding-agents-harness-tax)
+- **Defeating Nondeterminism in LLM Inference**：Thinking Machines Lab · [thinkingmachines.ai](https://thinkingmachines.ai/blog/defeating-nondeterminism-in-llm-inference/)
+- **Effective context engineering for AI agents**：Anthropic · [anthropic.com](https://www.anthropic.com/engineering/effective-context-engineering-for-ai-agents)
+- **Prefill 與 decode 的效能**（slide 123 的圖片來源）：Hugging Face Blog · [huggingface.co](https://huggingface.co/blog/tngtech/llm-performance-prefill-decode-concurrent-requests)
